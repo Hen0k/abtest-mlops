@@ -146,7 +146,7 @@ class CleanDataFrame:
         Drops columns that are not essesntial for modeling
         """
         if not columns:
-            columns = ['auction_id', 'date']
+            columns = ['auction_id', 'date', 'yes', 'no', 'device_make']
         df.drop(columns=columns, inplace=True)
 
         return df
@@ -158,10 +158,28 @@ class CleanDataFrame:
         """
         df['response'] = [1] * df.shape[0]
         df.loc[df['no'] == 1, 'response'] = 0
-        df = self.drop_columns(df, columns=['yes', 'no'])
 
         return df
 
+    def convert_to_brands(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        This converts the device model column in to 
+        `known` and `generic` brands. It then removes
+        the device_make column.
+        """
+        known_brands = ['samsung', 'htc', 'nokia',
+                        'moto', 'lg', 'oneplus',
+                        'iphone', 'xiaomi', 'huawei',
+                        'pixel']
+        makers = ["generic"]*df.shape[0]
+        for idx, make in enumerate(df['device_make'].values):
+            for brand in known_brands:
+                if brand in make.lower():
+                    makers[idx] = "known brand"
+                    break
+        df['brand'] = makers
+
+        return df
 
     def run_pipeline(self, df: pd.DataFrame) -> pd.DataFrame:
         """
@@ -170,8 +188,9 @@ class CleanDataFrame:
         df = self.drop_duplicates(df)
         df = self.drop_unresponsive(df)
         df = self.date_to_day(df)
-        df = self.drop_columns(df)
+        df = self.convert_to_brands(df)
         df = self.merge_response_columns(df)
+        df = self.drop_columns(df)
         df.reset_index(drop=True, inplace=True)
 
         return df
